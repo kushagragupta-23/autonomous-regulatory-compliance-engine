@@ -61,7 +61,7 @@ flowchart TD
 
 ---
 
-## 💼 Resume Bullet Points (Copy & Paste Ready)
+## 💼 Resume Bullet Points 
 
 * **Accomplished** automated statutory compliance auditing, **as measured by** a 94% reduction in manual legal review turnaround time and 0% factual hallucination rate, **by engineering** an autonomous multi-agent reasoning pipeline in **FastAPI** and **Pydantic v2**.
 * **Engineered** a hybrid document retrieval engine (**BM25 Sparse + Semantic Overlap**) indexing hundreds of regulatory circulars with sub-20ms query latency.
