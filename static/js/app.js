@@ -204,19 +204,48 @@ document.addEventListener("DOMContentLoaded", () => {
         <h3 class="feed-card-title">${item.title}</h3>
 
         <div class="relevance-meter-container">
-          <span class="relevance-score-lbl" style="color: ${scoreColor};">
-            ${item.relevance_score}% Relevance to ${client.name.split(" ")[0]}
-          </span>
-          <div class="relevance-bar-track">
+          <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <span class="relevance-score-lbl" style="color: ${scoreColor}; font-weight: 700;">
+              ${item.relevance_score}% Nexus · ${item.urgency_tier || 'MONITOR'}
+            </span>
+            <span style="font-size: 11px; color: var(--text-faint);">
+              Rule: <b>${Math.round((item.rule_score || 0.6) * 100)}%</b> | Semantic: <b>${Math.round((item.semantic_score || 0.5) * 100)}%</b>
+            </span>
+          </div>
+          <div class="relevance-bar-track" style="margin-top: 4px;">
             <div class="relevance-bar-fill" style="width: ${item.relevance_score}%; background: ${scoreColor};"></div>
           </div>
         </div>
 
+        <!-- Explainability Engine Why-Matched Badges -->
+        <div class="reasons-cloud" style="display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0;">
+          ${(item.reasons || []).map(r => `<span class="badge" style="background: rgba(37,99,235,0.12); color: var(--blue); border: 1px solid rgba(37,99,235,0.25); font-size: 11px; padding: 2px 8px;">✓ ${r.text}</span>`).join("")}
+        </div>
+
         <div class="feed-impact-callout">
-          <strong>Impact Rationale:</strong> ${item.client_impact}
+          <strong>Explainability Rationale:</strong> ${item.explanation || item.client_impact}
         </div>
 
         <p class="feed-card-summary">${item.summary}</p>
+
+        <!-- Suggested Action Task Workflow -->
+        ${item.suggested_task ? `
+        <div class="suggested-task-banner" style="background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin: 10px 0;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-size: 12px; font-weight: 600; color: var(--text);">⚡ Suggested Task: ${item.suggested_task.action}</span>
+            <span class="badge" style="font-size: 10px; background: rgba(220,38,38,0.12); color: var(--red);">${item.suggested_task.priority}</span>
+          </div>
+          <p style="font-size: 11.5px; color: var(--text-faint); margin: 0 0 8px 0;">${item.suggested_task.description}</p>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn primary" style="font-size: 11px; padding: 4px 10px;" onclick="window.approveTaskAction('${item.suggested_task.task_id}', this)">
+              ✓ Approve & Schedule (${item.suggested_task.due_date})
+            </button>
+            <button class="btn ghost" style="font-size: 11px; padding: 4px 10px;" onclick="window.generateTaskMemo('${item.suggested_task.task_id}', this)">
+              📄 Draft Advisory Memo
+            </button>
+          </div>
+        </div>
+        ` : ''}
 
         <div class="tag-cloud" style="margin-bottom: 12px;">
           ${sectionsHtml}
@@ -241,42 +270,143 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Workplan Tasks Generator (Adapted from Personalised Feed concepts)
-  function renderWorkplanTasks() {
-    const cur = clients.find(c => c.id === activeClientId) || clients[0];
-    const highRelevanceItems = activeFeedData.filter(i => i.relevance_score >= 60.0).slice(0, 5);
-    workplanBadge.textContent = highRelevanceItems.length;
-
-    if (!highRelevanceItems.length) {
-      workplanTasksList.innerHTML = `<div class="feed-empty">No urgent action items for ${cur.name}.</div>`;
-      return;
+  // Global Task Actions for Workplan and Feed
+  window.approveTaskAction = async function(taskId, btn) {
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Approving...";
     }
+    try {
+      const res = await fetch(`/api/v1/tasks/${taskId}/action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "APPROVE" })
+      });
+      const data = await res.json();
+      if (btn) {
+        btn.textContent = "✅ Scheduled";
+        btn.style.background = "var(--green)";
+      }
+      alert(`✅ Task Approved!\n${data.updated_task.resolution_notes}`);
+      renderWorkplanTasks();
+    } catch (err) {
+      alert("Error approving task: " + err.message);
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "✓ Approve & Schedule";
+      }
+    }
+  };
 
-    workplanTasksList.innerHTML = "";
-    highRelevanceItems.forEach((item, idx) => {
-      const taskCard = document.createElement("div");
-      taskCard.className = "workplan-task-card";
-      taskCard.innerHTML = `
-        <div class="workplan-task-head">
-          <span class="workplan-task-title">Task #${idx+1}: Comply with ${item.title.substring(0, 65)}...</span>
-          <span class="badge pill-HIGH">Suggested</span>
-        </div>
-        <div class="workplan-task-client">Client: <b>${cur.name}</b> · Statute: <b>${item.statute}</b> · Authority: <b>${item.authority}</b></div>
-        <p style="font-size: 13px; color: var(--text);">${item.client_impact}</p>
-        <div class="workplan-actions">
-          <button class="btn primary" style="font-size: 11.5px; padding: 6px 12px;" onclick="alert('✅ Task approved and added to active ${cur.name.split(' ')[0]} compliance workplan!')">
-            ✓ Approve for Workplan
-          </button>
-          <button class="btn secondary" style="font-size: 11.5px; padding: 6px 12px;" onclick="this.closest('.workplan-task-card').remove(); alert('Task dismissed with reason logged.')">
-            ✕ Decline
-          </button>
-          <button class="btn ghost" style="font-size: 11.5px; padding: 6px 12px;" onclick="document.querySelectorAll('.btn-audit-feed')[${idx}]?.click()">
-            ⚡ Audit Details
-          </button>
-        </div>
-      `;
-      workplanTasksList.appendChild(taskCard);
-    });
+  window.generateTaskMemo = async function(taskId, btn) {
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Drafting Memo...";
+    }
+    try {
+      const res = await fetch(`/api/v1/tasks/${taskId}/action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "GENERATE_MEMO" })
+      });
+      const data = await res.json();
+      if (btn) {
+        btn.textContent = "✅ Memo Queued";
+        btn.style.background = "var(--blue)";
+      }
+      alert(`📄 Statutory Advisory Memo Drafted!\nQueued for partner sign-off and dispatch.`);
+      renderWorkplanTasks();
+    } catch (err) {
+      alert("Error drafting memo: " + err.message);
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "📄 Draft Advisory Memo";
+      }
+    }
+  };
+
+  window.declineTaskAction = async function(taskId, btn) {
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Declining...";
+    }
+    try {
+      const res = await fetch(`/api/v1/tasks/${taskId}/action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "DECLINE" })
+      });
+      if (btn) {
+        const card = btn.closest('.workplan-task-card');
+        if (card) card.style.opacity = '0.4';
+        btn.textContent = "✕ Declined";
+      }
+      alert("Task declined and marked as non-material for this audit cycle.");
+      renderWorkplanTasks();
+    } catch (err) {
+      alert("Error declining task: " + err.message);
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "✕ Decline";
+      }
+    }
+  };
+
+  // Workplan Tasks Generator (Live API Integration)
+  async function renderWorkplanTasks() {
+    const cur = clients.find(c => c.id === activeClientId) || clients[0];
+    try {
+      const res = await fetch(`/api/v1/tasks?client_id=${encodeURIComponent(activeClientId)}`);
+      const data = await res.json();
+      const tasks = data.tasks || [];
+      workplanBadge.textContent = tasks.length;
+
+      if (!tasks.length) {
+        workplanTasksList.innerHTML = `<div class="feed-empty">No pending action items for ${cur.name}. All circulars assessed.</div>`;
+        return;
+      }
+
+      workplanTasksList.innerHTML = "";
+      tasks.forEach((task, idx) => {
+        const isApproved = task.status === "APPROVED_SCHEDULED";
+        const isDeclined = task.status === "DECLINED_ARCHIVED";
+        const statusBadge = isApproved ? "pill-LOW" : (isDeclined ? "pill-MEDIUM" : "pill-HIGH");
+
+        const taskCard = document.createElement("div");
+        taskCard.className = "workplan-task-card";
+        if (isDeclined) taskCard.style.opacity = "0.5";
+
+        taskCard.innerHTML = `
+          <div class="workplan-task-head">
+            <span class="workplan-task-title">Task #${idx+1}: ${task.action}</span>
+            <span class="badge ${statusBadge}">${task.status.replace("_", " ")}</span>
+          </div>
+          <div class="workplan-task-client">Client: <b>${cur.name}</b> · Priority: <b>${task.priority}</b> · Due: <b>${task.due_date}</b></div>
+          <p style="font-size: 13px; color: var(--text); margin: 6px 0;">${task.description}</p>
+          ${task.resolution_notes ? `<div style="font-size: 11.5px; color: var(--green); margin-bottom: 8px;"><b>Audit Note:</b> ${task.resolution_notes}</div>` : ''}
+          <div class="workplan-actions">
+            ${!isApproved && !isDeclined ? `
+              <button class="btn primary" style="font-size: 11.5px; padding: 6px 12px;" onclick="window.approveTaskAction('${task.task_id}', this)">
+                ✓ Approve for Workplan
+              </button>
+              <button class="btn secondary" style="font-size: 11.5px; padding: 6px 12px;" onclick="window.declineTaskAction('${task.task_id}', this)">
+                ✕ Decline
+              </button>
+            ` : `
+              <span style="font-size: 12px; font-weight: 600; color: ${isApproved ? 'var(--green)' : 'var(--text-faint)'};">
+                ${isApproved ? '✅ Approved & Added to Engagement Workplan' : 'Archived'}
+              </span>
+            `}
+            <button class="btn ghost" style="font-size: 11.5px; padding: 6px 12px;" onclick="window.generateTaskMemo('${task.task_id}', this)">
+              📄 Generate Advisory Memo
+            </button>
+          </div>
+        `;
+        workplanTasksList.appendChild(taskCard);
+      });
+    } catch (err) {
+      workplanTasksList.innerHTML = `<div class="feed-empty">Error loading workplan tasks: ${err.message}</div>`;
+    }
   }
 
   // Filter Buttons
