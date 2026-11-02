@@ -1,0 +1,9 @@
+CENTRAL BOARD OF INDIRECT TAXES AND CUSTOMS
+Notification No. 10/2023 – Central Tax
+New Delhi, the 10th May, 2023
+
+G.S.R. .....(E).— In exercise of the powers conferred by sub-rule (4) of rule 48 of the Central Goods and Services Tax Rules, 2017, the Government hereby notifies registered persons whose aggregate turnover in any preceding financial year from 2017-18 onwards exceeds five crore rupees (INR 5,00,00,000), as a class of registered persons who shall prepare invoices in terms of sub-rule (4) of rule 48 of the said rules.
+
+Mandatory Generation of IRN:
+Any registered tax entity supplying B2B goods or services must generate an Invoice Reference Number (IRN) and signed dynamic QR code from the Invoice Registration Portal (IRP). Invoices issued without a valid IRN shall be deemed null and void under GST law, resulting in denial of Input Tax Credit (ITC) to recipient businesses.
+

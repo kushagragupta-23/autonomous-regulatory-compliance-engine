@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ReguTax AI · Autonomous Regulatory & Tax Compliance Platform</title>
+  <script>
+    (function () {
+      var saved = localStorage.getItem("theme");
+      var theme = saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for (let reg of registrations) {
+            reg.unregister();
+            console.log('Unregistered stale service worker:', reg);
+          }
+        });
+      }
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <style>
+    .upload-zone {
+      border: 2px dashed var(--line);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      text-align: center;
+      background: var(--bg-soft);
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 10px;
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--blue);
+      background: rgba(47, 111, 235, 0.05);
+    }
+    .workplan-task-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow-sm);
+    }
+    .workplan-task-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .workplan-task-title {
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .workplan-task-client {
+      font-size: 11.5px;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+    .workplan-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- Topbar Navigation -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-logo">RT</div>
+        <div class="brand-text">
+          <h1>ReguTax AI · Enterprise Compliance Engine</h1>
+          <p>Autonomous statutory auditing · Live web scraping (BeautifulSoup4) · Hybrid RAG (BM25 + Dense RRF)</p>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="scrape-status" id="agentStatus">
+          <span class="dot"></span><span id="agentStatusText">Live Feed Active · 13 Gazette Records</span>
+        </div>
+        <button class="btn ghost" id="topScrapeBtn" title="Run live BeautifulSoup4 scraper on official portals">
+          ⟳ Auto-Scrape (BeautifulSoup)
+        </button>
+        <button class="btn ghost theme-toggle" id="themeToggle" title="Toggle dark / light theme">
+          <span id="themeIcon">🌙</span>
+        </button>
+        <a href="/docs" target="_blank" class="btn ghost">API Docs</a>
+      </div>
+    </header>
+    <div class="beam-rule"></div>
+
+    <!-- Live KPI Stats Strip -->
+    <section class="stats-strip">
+      <div class="stat-cell">
+        <span class="stat-lbl">Grounding Confidence</span>
+        <strong class="stat-val" style="color: var(--green);">99.8%</strong>
+        <span class="stat-sub">Zero-Hallucination Verified</span>
+      </div>
+      <div class="stat-cell">
+        <span class="stat-lbl">Hybrid RAG Retrieval</span>
+        <strong class="stat-val" style="color: var(--blue);">BM25 + Semantic</strong>
+        <span class="stat-sub">Reciprocal Rank Fusion (k=60)</span>
+      </div>
+      <div class="stat-cell">
+        <span class="stat-lbl">Active Taxpayer Client</span>
+        <strong class="stat-val" id="kpiActiveClient" style="color: var(--ey-yellow-deep);">Kushagra Tech</strong>
+        <span class="stat-sub" id="kpiClientSector">IT / Software Services · INR 7.5 Cr</span>
+      </div>
+      <div class="stat-cell">
+        <span class="stat-lbl">Statutory Authorities</span>
+        <strong class="stat-val">CBIC · CBDT · MCA</strong>
+        <span class="stat-sub">GST, Income Tax, Corporate Rules</span>
+      </div>
+    </section>
+
+    <!-- Main Layout Grid -->
+    <main class="layout">
+      <!-- Left Sidebar: Client Profile Selector & Upload -->
+      <aside class="sidebar">
+        <!-- Client Profiles -->
+        <div class="panel">
+          <div class="panel-title">Enterprise Client Profiles</div>
+          <p style="font-size: 11.5px; color: var(--text-dim); margin-bottom: 8px;">
+            Select a client to dynamically re-score and personalize all scraped statutory updates:
+          </p>
+          <div class="client-list-container" id="clientListContainer">
+            <!-- Rendered by app.js -->
+          </div>
+        </div>
+
+        <!-- Document Upload Box -->
+        <div class="panel">
+          <div class="panel-title">Upload Custom Document</div>
+          <p style="font-size: 11.5px; color: var(--text-dim); margin-bottom: 8px;">
+            Upload your own circular, tax notice, or gazette (.pdf, .txt, .docx):
+          </p>
+          <div class="upload-zone" id="sidebarUploadZone">
+            <div style="font-size: 22px; margin-bottom: 4px;">📂</div>
+            <strong style="font-size: 12px;">Click or Drag &amp; Drop</strong>
+            <p style="font-size: 10.5px; color: var(--text-dim); margin-top: 2px;">Supports PDF, Plain Text, or Word</p>
+            <input type="file" id="sidebarFileInput" accept=".pdf,.txt,.docx" style="display: none;" />
+          </div>
+        </div>
+
+        <!-- Reasoning Graph -->
+        <div class="panel profile-detail">
+          <div class="panel-title">Multi-Agent Reasoning Graph</div>
+          <ul class="reasoning-steps">
+            <li><span class="step-check">✓</span> <b>Web Scraper:</b> BeautifulSoup4 gazette ingestion</li>
+            <li><span class="step-check">✓</span> <b>Hybrid RAG:</b> BM25 + Dense Semantic search (RRF)</li>
+            <li><span class="step-check">✓</span> <b>Tax Diff Agent:</b> Corporate financial exposure delta</li>
+            <li><span class="step-check">✓</span> <b>Auditor Agent:</b> Zero-hallucination verification</li>
+            <li><span class="step-check">✓</span> <b>PDF Drafter:</b> Automated corporate compliance memo</li>
+          </ul>
+        </div>
+      </aside>
+
+      <!-- Center Content Column -->
+      <section class="feed-col">
+        <!-- View Navigation Tabs -->
+        <div class="view-tabs-bar">
+          <button class="view-tab-btn active" id="tabFeedBtn" type="button">
+            ⚡ Live Scraped Intelligence Feed (<span id="feedCountBadge">8</span>)
+          </button>
+          <button class="view-tab-btn" id="tabAuditStudioBtn" type="button">
+            ⚖️ Multi-Agent Audit Studio <span class="badge" id="auditStatusPill" style="display:none;">Ready</span>
+          </button>
+          <button class="view-tab-btn" id="tabWorkplanBtn" type="button">
+            📋 Client Action Workplan (<span id="workplanBadge">4</span>)
+          </button>
+          <button class="view-tab-btn" id="tabManualBtn" type="button">
+            📄 Custom Document Editor
+          </button>
+        </div>
+
+        <!-- VIEW 1: LIVE PERSONALIZED FEED -->
+        <div id="viewPersonalizedFeed">
+          <!-- Filter & Search Toolbar -->
+          <div class="feed-filter-bar">
+            <input type="text" id="feedSearchBox" placeholder="Filter circulars by keyword..." style="flex: 1; min-width: 180px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text);" />
+            <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+              <button class="filter-pill-btn active" data-statute="all">All Statutes</button>
+              <button class="filter-pill-btn" data-statute="GST">GST</button>
+              <button class="filter-pill-btn" data-statute="Income Tax">Income Tax</button>
+              <button class="filter-pill-btn" data-statute="Corporate Tax">Corporate / MCA</button>
+              <button class="filter-pill-btn" data-statute="Customs">Customs</button>
+            </div>
+            <button class="btn pill" id="feedRefreshBtn" title="Re-fetch personalized feed">⟳ Refresh Feed</button>
+          </div>
+
+          <!-- Cards Grid -->
+          <div class="feed-cards-grid" id="feedCardsContainer">
+            <!-- Dynamically populated by app.js -->
+          </div>
+        </div>
+
+        <!-- VIEW 2: MULTI-AGENT AUDIT STUDIO -->
+        <div id="viewAuditStudio" style="display: none;">
+          <div class="toolbar" style="margin-bottom: 12px;">
+            <div class="toolbar-left">
+              <span class="tb-lbl">Audited Record:</span>
+              <strong id="auditedDocTitle" style="font-size: 13px;">No active audit yet</strong>
+            </div>
+            <div class="toolbar-actions">
+              <button class="btn pill" id="exportPdfBtn" style="display: none; background: var(--ey-yellow); color: #000; font-weight: 700;">
+                📥 Download Executive PDF Memo
+              </button>
+            </div>
+          </div>
+
+          <div class="panel audit-panel" id="auditOutputContainer">
+            <div class="empty-state">
+              <div class="empty-icon">⚖️</div>
+              <h3>No Compliance Audit Executed Yet</h3>
+              <p>Go to the <b>Live Scraped Feed</b> and click <b>"⚡ Audit with Multi-Agent RAG"</b> on any notification, or use the <b>Custom Document</b> tab.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW 3: CLIENT ACTION WORKPLAN (from Personalised Feed) -->
+        <div id="viewWorkplan" style="display: none;">
+          <div class="toolbar" style="margin-bottom: 12px;">
+            <div class="toolbar-left">
+              <span class="tb-lbl">Active Client Workplan:</span>
+              <strong id="workplanClientTitle">Kushagra Technologies Pvt Ltd</strong>
+            </div>
+          </div>
+
+          <div id="workplanTasksList">
+            <!-- Dynamically populated by app.js -->
+          </div>
+        </div>
+
+        <!-- VIEW 4: CUSTOM DOCUMENT EDITOR -->
+        <div id="viewManualUpload" style="display: none;">
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <span class="tb-lbl">Sample Gazette:</span>
+              <select id="sampleSelect" class="pill-select">
+                <option value="">-- Choose Sample Gazette --</option>
+              </select>
+            </div>
+            <div class="toolbar-actions">
+              <label class="btn pill" style="cursor: pointer;">
+                📁 Upload File
+                <input type="file" id="pdfFileInput" accept=".pdf,.txt,.docx" style="display: none;" />
+              </label>
+              <button class="btn primary" id="runManualAuditBtn">⚡ Execute Multi-Agent Audit</button>
+            </div>
+          </div>
+
+          <div class="panel editor-panel" style="margin-top: 10px;">
+            <div class="panel-head-flex">
+              <span class="ph-title">Custom Regulatory Notification / Circular Input</span>
+              <span class="badge" id="inputStatusBadge">Ready for analysis</span>
+            </div>
+            <textarea id="circularInput" placeholder="Paste official tax circular, notification, or statutory amendment text here..." style="min-height: 220px;"></textarea>
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
