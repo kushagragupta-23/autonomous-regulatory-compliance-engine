@@ -64,3 +64,4 @@ def test_task_workflow_api():
     assert action_resp.status_code == 200
     assert action_resp.json()["action_taken"] == "APPROVE"
     assert action_resp.json()["updated_task"]["status"] == "APPROVED_SCHEDULED"
+

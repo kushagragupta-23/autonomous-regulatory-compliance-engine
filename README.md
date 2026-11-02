@@ -1,3 +1,15 @@
+---
+title: Autonomous Regulatory Compliance Engine
+emoji: ⚖️
+colorFrom: blue
+colorTo: indigo
+sdk: gradio
+sdk_version: 4.44.0
+app_file: app.py
+pinned: false
+license: mit
+---
+
 # ⚖️ Autonomous Regulatory & Tax Compliance Engine
 > **Enterprise Multi-Agent Intelligence System for Continuous Statutory Auditing & Zero-Hallucination Risk Evaluation.**
 
