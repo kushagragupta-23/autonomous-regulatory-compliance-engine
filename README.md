@@ -16,7 +16,11 @@ license: mit
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg?style=flat&logo=fastapi)](https://fastapi.tiangolo.com)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?style=flat&logo=python)](https://python.org)
 [![Pydantic v2](https://img.shields.io/badge/Pydantic-v2.6+-e92063.svg?style=flat)](https://docs.pydantic.dev/)
+[![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Live%20Demo-ffd21e.svg?style=flat&logo=huggingface)](https://huggingface.co/spaces/kushagragupta1998/regulatory-compliance-agent)
 [![Tests Passing](https://img.shields.io/badge/pytest-Passing-brightgreen.svg?style=flat&logo=pytest)](https://pytest.org)
+
+> 🚀 **Live Interactive App:** Try the multi-agent statutory audit online at [**Hugging Face Spaces: regulatory-compliance-agent**](https://huggingface.co/spaces/kushagragupta1998/regulatory-compliance-agent)
+
 
 ---
 
