@@ -29,63 +29,83 @@ def get_sample_texts():
 SAMPLES = get_sample_texts()
 
 def run_audit(circular_text, entity_name, entity_type, turnover, is_gst):
-    if not circular_text or not circular_text.strip():
-        return (
-            "⚠️ **Please enter or select a circular text.**",
-            "",
-            "No circular provided for auditing.",
-            None
+    try:
+        if not circular_text or not circular_text.strip():
+            return (
+                "⚠️ **Please enter or select a circular text.**",
+                "",
+                "No circular provided for auditing.",
+                None
+            )
+
+        try:
+            numeric_turnover = float(turnover) if turnover is not None else 65000000.0
+        except Exception:
+            numeric_turnover = 65000000.0
+
+        profile = TaxpayerProfile(
+            entity_name=entity_name or "Kushagra Enterprises Ltd",
+            entity_type=entity_type or "Private_Limited",
+            annual_turnover=numeric_turnover,
+            annual_income=12000000.0,
+            gst_registered=(is_gst == "Yes"),
+            opted_new_tax_regime=True
         )
 
-    profile = TaxpayerProfile(
-        entity_name=entity_name or "Kushagra Enterprises Ltd",
-        entity_type=entity_type or "Private_Limited",
-        annual_turnover=float(turnover) if turnover else 65000000.0,
-        annual_income=12000000.0,
-        gst_registered=(is_gst == "Yes"),
-        opted_new_tax_regime=True
-    )
+        report = orchestrator.run_pipeline(circular_text, profile)
 
-    report = orchestrator.run_pipeline(circular_text, profile)
-
-    # Status & KPI Banner
-    status_color = "#10B981" if "COMPLIANT" in report.overall_compliance_status else ("#F59E0B" if "ACTION" in report.overall_compliance_status else "#EF4444")
-    status_md = f"""
+        # Status & KPI Banner
+        status_color = "#10B981" if "COMPLIANT" in report.overall_compliance_status else ("#F59E0B" if "ACTION" in report.overall_compliance_status else "#EF4444")
+        status_md = f"""
 ## ⚖️ Overall Status: <span style='color:{status_color}; font-weight:800;'>{report.overall_compliance_status.replace('_', ' ')}</span>
 **Report ID**: `{report.report_id}` | **Issuing Authority**: `{report.circular_meta.issuing_authority}`  
 **Calculated Hallucination Risk**: `< {report.audit_report.hallucination_risk_score * 100:.1f}% (Zero-Hallucination Verified)`
 """
 
-    # Sectors, Topics & Urgency
-    sectors_html = " ".join([f"<span style='background:#1E293B;color:#38BDF8;padding:3px 8px;border-radius:4px;font-size:12px;'>{s}</span>" for s in report.circular_meta.applicable_sectors])
-    topics_html = " ".join([f"<span style='background:#1E293B;color:#A7F3D0;padding:3px 8px;border-radius:4px;font-size:12px;'>{t}</span>" for t in report.circular_meta.tax_topics])
+        # Sectors, Topics & Urgency
+        sectors_html = " ".join([f"<span style='background:#1E293B;color:#38BDF8;padding:3px 8px;border-radius:4px;font-size:12px;'>{s}</span>" for s in report.circular_meta.applicable_sectors])
+        topics_html = " ".join([f"<span style='background:#1E293B;color:#A7F3D0;padding:3px 8px;border-radius:4px;font-size:12px;'>{t}</span>" for t in report.circular_meta.tax_topics])
 
-    meta_md = f"""
+        meta_md = f"""
 **Applicable Enterprise Sectors**: {sectors_html}  
 **Tax Topics**: {topics_html}  
 **Statutory Directive**: `{report.circular_meta.urgency_status}`
 """
 
-    # Impact assessment breakdown
-    impact_rows = []
-    for imp in report.impact_assessment:
-        badge = f"<b style='color:{'#EF4444' if imp.risk_level=='CRITICAL' else ('#F59E0B' if imp.risk_level=='HIGH' else '#10B981')}'>{imp.risk_level}</b>"
-        impact_rows.append(f"""
+        # Impact assessment breakdown
+        impact_rows = []
+        for imp in report.impact_assessment:
+            badge = f"<b style='color:{'#EF4444' if imp.risk_level=='CRITICAL' else ('#F59E0B' if imp.risk_level=='HIGH' else '#10B981')}'>{imp.risk_level}</b>"
+            impact_rows.append(f"""
 #### {imp.rule_section} [{badge}]
 - **Operational Finding**: {imp.description}
 - **Action Required**: {imp.action_required}
 - **Statutory Deadline**: `{imp.deadline}` | **Financial Exposure**: `{imp.financial_exposure}`
 ---
 """)
-    impacts_md = "\n".join(impact_rows) if impact_rows else "✅ No adverse exposures identified for this entity profile."
+        impacts_md = "\n".join(impact_rows) if impact_rows else "✅ No adverse exposures identified for this entity profile."
 
-    # Generate PDF audit memorandum in exports directory for safe Gradio file serving
-    exports_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "exports")
-    os.makedirs(exports_dir, exist_ok=True)
-    pdf_path = os.path.join(exports_dir, f"{report.report_id}_compliance_memo.pdf")
-    CompliancePdfExporter.generate_pdf(report, pdf_path)
+        # Generate PDF audit memorandum in exports directory for safe Gradio file serving
+        pdf_path = None
+        try:
+            exports_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "exports")
+            os.makedirs(exports_dir, exist_ok=True)
+            candidate_pdf = os.path.join(exports_dir, f"{report.report_id}_compliance_memo.pdf")
+            CompliancePdfExporter.generate_pdf(report, candidate_pdf)
+            if os.path.exists(candidate_pdf):
+                pdf_path = candidate_pdf
+        except Exception as pdf_err:
+            print(f"PDF export notice: {pdf_err}")
 
-    return status_md, meta_md, impacts_md, pdf_path
+        return status_md, meta_md, impacts_md, pdf_path
+
+    except Exception as exc:
+        return (
+            f"⚠️ **Error running audit**: `{str(exc)}`",
+            "Please verify that a circular text is provided and try again.",
+            f"```\n{str(exc)}\n```",
+            None
+        )
 
 def load_sample(sample_name):
     return SAMPLES.get(sample_name, "")
