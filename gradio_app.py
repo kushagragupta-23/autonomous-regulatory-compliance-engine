@@ -78,8 +78,10 @@ def run_audit(circular_text, entity_name, entity_type, turnover, is_gst):
 """)
     impacts_md = "\n".join(impact_rows)
 
-    # Generate PDF audit memorandum
-    temp_pdf = os.path.join(tempfile.gettempdir(), f"{report.report_id}_compliance_memo.pdf")
+    # Generate PDF audit memorandum in exports directory for safe Gradio file serving
+    exports_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "exports")
+    os.makedirs(exports_dir, exist_ok=True)
+    temp_pdf = os.path.join(exports_dir, f"{report.report_id}_compliance_memo.pdf")
     CompliancePdfExporter.generate_pdf(report, temp_pdf)
 
     return status_md, meta_md, impacts_md, temp_pdf
@@ -129,6 +131,7 @@ with gr.Blocks(title="ReguTax AI | Compliance Intelligence") as demo:
             audit_btn = gr.Button("⚡ Execute Multi-Agent Audit", variant="primary")
 
     load_btn.click(fn=load_sample, inputs=[sample_dropdown], outputs=[circular_text])
+    sample_dropdown.change(fn=load_sample, inputs=[sample_dropdown], outputs=[circular_text])
 
     gr.Markdown("---")
     gr.Markdown("## 📊 Executive Audit Findings & Exposure")
